@@ -1,0 +1,6 @@
+{
+    "cmake.sourceDirectory": "D:/MLTECH/ESP32S3 ETH_Loc edit/lib/Adafruit_BusIO",
+    "files.associations": {
+        "string": "cpp"
+    }
+}

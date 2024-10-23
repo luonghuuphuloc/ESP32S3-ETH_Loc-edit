@@ -1,0 +1,9 @@
+{
+    "wifi": {
+        "ssid": "Antony Phuoc Nguyen",
+        "password": "Phuocnh@101092",
+        "static_ip": "",
+        "gateway_ip": "",
+        "subnet_mask": ""
+    }
+}
