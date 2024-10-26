@@ -44,6 +44,7 @@ String getCurrentDayOfWeekString();
 bool timeElapsed(uint32_t& last_time, uint32_t interval);
 void resetManualOverrideFlags();
 void clearManualOverrideFlags();
+void turnOffAllDOs();
 unsigned long do0_on_time = 0;  // Thời gian bật của DO_0
 bool do0_is_on = false;         // Trạng thái của DO_0
 unsigned long do0_off_time = 0; // Thời gian tắt của DO_0
@@ -502,6 +503,28 @@ void resetManualOverrideFlags() {
     }
     Serial.println("All manual override flags cleared after schedule ended.");
 }
+/**
+ * @brief Turns off all Digital Outputs (DOs) and updates Thingsboard telemetry.
+ */
+void turnOffAllDOs() {
+    bool do_data[NUM_DO];
+    
+    // Set all DO states to false
+    for (int i = 0; i < NUM_DO; i++) {
+        do_data[i] = false;
+    }
+    
+    // Write the new DO states to hardware
+    MLT_DIO.writeAllDO(do_data, NUM_DO);
+    
+    // Update Thingsboard telemetry for each DO
+    for (int i = 0; i < NUM_DO; i++) {
+        String key = "digital_out_" + String(i + 1);
+        ESP32_ThingsboardService.sendTelemertry(key, false);
+    }
+    
+    Serial.println("Executed turnOffAllDOs(): All Digital Outputs have been set to OFF.");
+}
 
 void checkAndExecSchedule() {
     TSchedule m_schedule;
@@ -560,6 +583,7 @@ void checkAndExecSchedule() {
     if (schedule_was_active && !schedule_running) {
         resetManualOverrideFlags();  // Reset the manual override flags here
         Serial.println("Manual override flags reset after schedule finished.");
+        turnOffAllDOs();
     }
 }
 
