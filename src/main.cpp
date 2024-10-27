@@ -598,6 +598,7 @@ void clearManualOverrideFlags() {
         }
     }
 }
+
 void executeSchedule(int i_schedule, TSchedule &m_schedule)
 {
     Serial.println("Executing schedule " + String(i_schedule + 1) + " with " + String(m_schedule.action_count) + " actions.");

@@ -1,6 +1,6 @@
 {
     "shared": {
-        "fw_title": "hieu-ota-8266",
-        "fw_version": "0.0"
+        "fw_title": "ESP32-S3",
+        "fw_version": "0.0.0"
     }
 }
