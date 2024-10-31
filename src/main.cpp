@@ -27,6 +27,9 @@
 MLT_DIOClass MLT_DIO;
 CtVanPump ctVanPump;
 
+struct tm last_correct_time;
+const uint32_t MAX_TIME_DIFF_SEC = 5; // Adjust as needed
+
 bool manual_override_pump = false;   // Manual override flag for pump
 bool manual_override_valves[NUM_DO]; // Manual override flags for each valve
 bool schedule_running = false;  // Flag to track if a schedule is running
@@ -45,6 +48,8 @@ bool timeElapsed(uint32_t& last_time, uint32_t interval);
 void resetManualOverrideFlags();
 void clearManualOverrideFlags();
 void turnOffAllDOs();
+bool isTimeOutOfSync(struct tm current_time, struct tm last_time);
+void checkAndCorrectRtcTime();
 unsigned long do0_on_time = 0;  // Thời gian bật của DO_0
 bool do0_is_on = false;         // Trạng thái của DO_0
 unsigned long do0_off_time = 0; // Thời gian tắt của DO_0
@@ -178,7 +183,9 @@ void loop()
     static uint32_t last_check_schedule = millis();
     if (timeElapsed(last_check_schedule, CHECK_AND_EXEC_SCHEDULE_INTERVAL_SEC * 1000))
     {
+        checkAndCorrectRtcTime();
         checkAndExecSchedule();
+        
     }
 
     /** Check and set Connection status LED */
@@ -188,16 +195,54 @@ void loop()
     logic();
 
     /** Request to server to update schedule */
-    static uint32_t last_sync_schedule_to_server = millis();
-    if (timeElapsed(last_sync_schedule_to_server, SYNC_SCHEDULE_INTERVAL_MINUTE * 60 * 1000))
-    {
-        if (WiFi.status() == WL_CONNECTED)
-        {
-            Mlt_Schedule.syncFromDevicetoServerPagination();
-        }
-    }
+    // static uint32_t last_sync_schedule_to_server = millis();
+    // if (timeElapsed(last_sync_schedule_to_server, SYNC_SCHEDULE_INTERVAL_MINUTE * 60 * 1000))
+    // {
+    //     if (WiFi.status() == WL_CONNECTED)
+    //     {
+    //         Mlt_Schedule.syncFromDevicetoServerPagination();
+    //     }
+    // }
+}
+bool isTimeOutOfSync(struct tm current_time, struct tm last_time) {
+    time_t current_epoch = mktime(&current_time);
+    time_t last_epoch = mktime(&last_time);
+    return abs(current_epoch - last_epoch) > MAX_TIME_DIFF_SEC;
 }
 
+void checkAndCorrectRtcTime() {
+    struct tm current_time;
+    
+    // Get current RTC time
+    if (Mlt_DS1307.getTime(&current_time)) {
+        if (isTimeOutOfSync(current_time, last_correct_time)) {
+            Serial.println("RTC time out of sync!");
+
+            // Update RTC time depending on connection
+            struct tm ntp_time;
+            if (WiFi.status() == WL_CONNECTED && Mlt_ESP32Ntp.getNtpTime(&ntp_time)) {
+                Mlt_DS1307.setTime(ntp_time);  // Use NTP to correct RTC
+                last_correct_time = ntp_time;
+                Serial.println("RTC time synced with NTP.");
+            } else {
+                // Calculate adjusted time by adding elapsed interval to last correct time
+                time_t last_correct_epoch = mktime(&last_correct_time);
+                time_t adjusted_epoch = last_correct_epoch + CHECK_AND_EXEC_SCHEDULE_INTERVAL_SEC;
+                struct tm* adjusted_time = localtime(&adjusted_epoch);
+                
+                // Set adjusted time to DS1307
+                Mlt_DS1307.setTime(*adjusted_time);
+                last_correct_time = *adjusted_time; // Update last correct time
+                Serial.println("RTC time adjusted to last known time plus interval.");
+            }
+        } else {
+            // Update last correct time if within acceptable range
+            last_correct_time = current_time;
+        }
+    } else {
+        Serial.println("Failed to read RTC time.");
+    }
+}
 void setDOState(bool* do_data, int index, bool state) {
     do_data[index] = state;
     MLT_DIO.writeAllDO(do_data, NUM_DO);
