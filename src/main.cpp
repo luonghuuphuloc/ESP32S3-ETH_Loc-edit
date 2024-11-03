@@ -28,7 +28,7 @@ MLT_DIOClass MLT_DIO;
 CtVanPump ctVanPump;
 
 struct tm last_correct_time;
-const uint32_t MAX_TIME_DIFF_SEC = 5; // Adjust as needed
+const uint32_t MAX_TIME_DIFF_SEC = CHECK_AND_EXEC_SCHEDULE_INTERVAL_SEC; // Adjust as needed
 
 bool manual_override_pump = false;   // Manual override flag for pump
 bool manual_override_valves[NUM_DO]; // Manual override flags for each valve
